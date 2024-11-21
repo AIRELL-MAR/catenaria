@@ -1,0 +1,70 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.special import j0, j1, jn_zeros
+
+# Función para la catenaria
+def catenaria(x, a):
+    return a * np.cosh(x / a) - a  # Desplazada para que pase por y=0 en los extremos
+
+# Función de integración numérica
+def integrar(a, b, n, g):
+    h = (b - a) / n
+    s = 0.0
+    for k in range(n):
+        s += g(a + k * h) * h
+    return s
+
+# Cálculo de los ceros de Bessel
+alfa = jn_zeros(0, 50)
+
+# Coeficientes A_n
+def CfBesselA(f, L, n, m):
+    g = lambda x: x * f(x) * j0(alfa[n] * np.sqrt(x / L))
+    A = integrar(0, L, m, g)
+    return A / (L * j1(alfa[n]) * j1(alfa[n]))
+
+def ListaCfBesselA(f, L, n, m):
+    return [CfBesselA(f, L, i, m) for i in range(n)]
+
+# Parámetros del sistema
+L = 10       # Longitud de la cuerda
+a = 5        # Parámetro de la catenaria
+n = 20       # Número de términos en la serie de Bessel
+m = 1000     # Número de puntos para integración
+k = 500      # Resolución espacial
+T = np.linspace(0, 10, 200)  # Resolución temporal
+
+# Puntos en el eje X
+X = np.linspace(-L / 2, L / 2, k)
+
+# Función base
+def f(x):
+    return 0.00025 * x
+
+# Cálculo de los coeficientes
+A = ListaCfBesselA(f, L, n, m)
+
+# Serie de Bessel con oscilaciones dinámicas
+def BSeriesCatenaria(X, t, A, L, a):
+    F = np.zeros_like(X)
+    catenary = catenaria(X, a)  # Curva estática
+    for i in range(len(A)):
+        F += A[i] * j0(alfa[i] * np.sqrt(X / L)) * np.cos(np.sqrt(9.8 / L) * alfa[i] * t)
+    return catenary + F  # Superposición
+
+# Animación
+plt.figure(figsize=(10, 6))
+for t in T:
+    Y = BSeriesCatenaria(X, t, A, L, a)
+    plt.clf()
+    plt.plot(X, Y, label="Cuerda colgante oscilante", color="blue")
+    plt.axhline(0, color='gray', linestyle='--', linewidth=0.5)
+    plt.title("Cuerda colgante con oscilaciones dinámicas")
+    plt.xlabel("Posición horizontal (x)")
+    plt.ylabel("Altura (y)")
+    plt.ylim(-a, 2 * a)
+    plt.legend()
+    plt.grid()
+    plt.pause(0.05)
+
+plt.show()
